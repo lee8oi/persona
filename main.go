@@ -590,14 +590,6 @@ func main() {
 
 		sess.Messages = append(sess.Messages, Message{Role: "user", Content: line})
 
-		evicted := sess.trim(*budget)
-		if len(evicted) > 0 {
-			if *compact {
-				sess.Summary = summarize(a, model, evicted, sess.Summary)
-			}
-			fmt.Printf("[context trimmed: %d turns evicted]\n", len(evicted))
-		}
-
 		fmt.Printf("\n%s> ", p.Name)
 		reply, err := streamChat(a, model, sess.buildPrompt())
 		fmt.Println()
@@ -607,6 +599,19 @@ func main() {
 			continue
 		}
 		sess.Messages = append(sess.Messages, Message{Role: "assistant", Content: reply})
+
+		// Trim (and optionally compact) only after a successful reply, so
+		// a failed exchange never evicts history or summarizes into a
+		// dead server. The outgoing request may exceed budget by one
+		// exchange; corrected on the following turn.
+		evicted := sess.trim(*budget)
+		if len(evicted) > 0 {
+			if *compact {
+				sess.Summary = summarize(a, model, evicted, sess.Summary)
+			}
+			fmt.Printf("[context trimmed: %d turns evicted]\n", len(evicted))
+		}
+
 		sess.Save(sessionPath) // crash-safe: persist after every exchange
 	}
 
@@ -661,6 +666,9 @@ func handleCommand(line string, sessPtr **Session, path *string, model *string, 
 		if arg == "" {
 			fmt.Println("usage: /save <name>")
 		} else {
+			// Timestamp prefix keeps lexicographic sort chronological:
+			// plain <name>.json would sort after all timestamped files
+			// and hijack bare "resume latest" forever.
 			target := filepath.Join(dir, time.Now().Format("2006-01-02-150405")+"-"+arg+".json")
 			if err := sess.Save(target); err != nil {
 				fmt.Fprintf(os.Stderr, "[error] %v\n", err)
