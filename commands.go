@@ -27,7 +27,7 @@ func handleCommand(line string, sessPtr **Session, path *string, model *string, 
 /history [N]         show live messages (last N; default all)
 /summary             show current compaction summary
 /model <name>        switch model mid-conversation
-/save <name>         save session copy with timestamp prefix
+/save <name>         save a session copy and adopt it
 /new                 clear dialogue, keep persona, fresh session file
 /quit                save and exit`)
 
