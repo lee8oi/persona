@@ -68,11 +68,14 @@ func streamChat(a api, model string, msgs []Message) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	spin := startSpinner("[" + model + "] thinking")
 	resp, err := http.Post(a.Endpoint, "application/json", body)
 	if err != nil {
+		spin.Stop()
 		return "", err
 	}
 	defer resp.Body.Close()
+	defer spin.Stop()
 
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 64*1024), 4*1024*1024)
@@ -85,6 +88,9 @@ func streamChat(a api, model string, msgs []Message) (string, error) {
 		}
 		if c.Error != "" {
 			return full.String(), fmt.Errorf("ollama: %s", c.Error)
+		}
+		if c.Message.Content != "" {
+			spin.Stop() // first visible token: clear indicator before printing
 		}
 		fmt.Print(c.Message.Content)
 		full.WriteString(c.Message.Content)
