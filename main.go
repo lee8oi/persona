@@ -53,11 +53,11 @@ type Message struct {
 // Session is the on-disk unit of persistence per persona: everything needed
 // to reconstruct a conversation, including the persona system prompt.
 type Session struct {
-	Persona  string    `json:"persona,omitempty"`     // owning persona name
-	Model    string    `json:"model"`                 // model tag used for this session
-	System   string    `json:"system"`                // persona system prompt
-	Summary  string    `json:"summary,omitempty"`     // rolling compaction of evicted turns
-	Messages []Message `json:"messages"`              // live dialogue (user/assistant pairs)
+	Persona  string    `json:"persona,omitempty"` // owning persona name
+	Model    string    `json:"model"`             // model tag used for this session
+	System   string    `json:"system"`            // persona system prompt
+	Summary  string    `json:"summary,omitempty"` // rolling compaction of evicted turns
+	Messages []Message `json:"messages"`          // live dialogue (user/assistant pairs)
 }
 
 // chatRequest mirrors Ollama's /api/chat payload.
@@ -661,7 +661,7 @@ func handleCommand(line string, sessPtr **Session, path *string, model *string, 
 		if arg == "" {
 			fmt.Println("usage: /save <name>")
 		} else {
-			target := filepath.Join(dir, arg+".json")
+			target := filepath.Join(dir, time.Now().Format("2006-01-02-150405")+"-"+arg+".json")
 			if err := sess.Save(target); err != nil {
 				fmt.Fprintf(os.Stderr, "[error] %v\n", err)
 			} else {
