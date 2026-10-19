@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,9 +24,10 @@ func handleCommand(line string, sessPtr **Session, path *string, model *string, 
 
 	case "help":
 		fmt.Println(`/stats               session statistics
+/history [N]         show live messages (last N; default all)
 /summary             show current compaction summary
 /model <name>        switch model mid-conversation
-/save <name>         save session copy as <name>.json and adopt it
+/save <name>         save session copy with timestamp prefix
 /new                 clear dialogue, keep persona, fresh session file
 /quit                save and exit`)
 
@@ -74,6 +76,36 @@ func handleCommand(line string, sessPtr **Session, path *string, model *string, 
 		*path = filepath.Join(dir, time.Now().Format("2006-01-02-150405")+".json")
 		fmt.Printf("new session: %s\n", *path)
 
+	case "history":
+		limit := len(sess.Messages)
+		if n, perr := strconv.Atoi(strings.TrimSpace(arg)); perr == nil && n >= 0 {
+			if n < limit {
+				limit = n
+			}
+		} else if arg != "" {
+			fmt.Println("usage: /history [N]")
+			return false
+		}
+		start := len(sess.Messages) - limit
+		for i := start; i < len(sess.Messages); i++ {
+			m := sess.Messages[i]
+			prefix := "you"
+			if m.Role == "assistant" {
+				prefix = sess.Persona
+			}
+			fmt.Printf("--- %s ---\n%s\n", prefix, m.Content)
+		}
+		if start > 0 {
+			fmt.Printf("(%d earlier live turns not shown; use /history <larger-N>)\n", start/2)
+		}
+		if sess.Evicted > 0 {
+			if sess.Summary != "" {
+				fmt.Printf("(%d messages evicted by trimming; see /summary)\n", sess.Evicted)
+			} else {
+				fmt.Printf("(%d messages evicted by trimming and dropped; they are not recoverable from this session)\n", sess.Evicted)
+			}
+		}
+
 	default:
 		fmt.Printf("unknown command: /%s (try /help)\n", cmd)
 	}
@@ -88,6 +120,7 @@ usage:
   persona                          show this help and list personas
   persona list                     list personas and session counts
   persona init <name>              create a starter persona file
+  persona sessions [<name>]        list sessions for a persona (or all)
   persona <name>                   resume the latest session
   persona <name> -new              start a fresh session
   persona <name> -resume <file>    resume a specific session file

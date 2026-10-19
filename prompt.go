@@ -44,14 +44,13 @@ func (s *Session) buildPrompt() []Message {
 func (s *Session) trim(budget int) []Message {
 	var evicted []Message
 	for promptEstimate(s.buildPrompt()) > budget && len(s.Messages) >= 2 {
-		// Evict a full user+assistant pair; a leading lone assistant
-		// message (only possible in odd hand-edited files) goes singly.
 		n := 2
 		if s.Messages[0].Role == "assistant" {
 			n = 1
 		}
 		evicted = append(evicted, s.Messages[:n]...)
 		s.Messages = s.Messages[n:]
+		s.Evicted += n // all-time eviction count, for /history disclosure
 	}
 	return evicted
 }

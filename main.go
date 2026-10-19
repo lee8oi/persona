@@ -13,6 +13,7 @@
 //	persona                          show help and list personas
 //	persona list                     list personas with session counts
 //	persona init <name>              create a starter persona file
+//	persona sessions [<name>]        list sessions for a persona (or all)
 //	persona <name>                   resume the latest session
 //	persona <name> -new              start a fresh session
 //	persona <name> -resume <file>    resume a specific session file
@@ -57,6 +58,17 @@ func main() {
 			os.Exit(1)
 		}
 		initCommand(args[1], personasDir)
+		return
+	case "sessions":
+		if len(args) > 2 {
+			fmt.Fprintln(os.Stderr, "usage: persona sessions [<name>]")
+			os.Exit(1)
+		}
+		name := ""
+		if len(args) == 2 {
+			name = args[1]
+		}
+		sessionsCommand(personasDir, dataRoot, name)
 		return
 	}
 

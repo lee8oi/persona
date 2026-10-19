@@ -137,3 +137,94 @@ func initCommand(name, personasDir string) {
 	fmt.Printf("created: %s\n", path)
 	fmt.Printf("next: edit the file (system prompt + front matter), then run 'persona %s'\n", name)
 }
+
+// sessionsCommand lists a persona's session files, newest first, with turn
+// counts and a one-line preview of each conversation's first user message.
+// With no argument, iterates every persona.
+func sessionsCommand(personasDir, dataRoot, name string) {
+	if name != "" {
+		p, err := loadPersona(filepath.Join(personasDir, name+".md"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "persona %q: %v\n", name, err)
+			os.Exit(1)
+		}
+		sessionsCommandOne(p, dataRoot)
+		return
+	}
+
+	entries, err := os.ReadDir(personasDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "(no personas yet — create one with: persona init <name>)\n")
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() || (!strings.HasSuffix(e.Name(), ".md") && !strings.HasSuffix(e.Name(), ".txt")) {
+			continue
+		}
+		p, perr := loadPersona(filepath.Join(personasDir, e.Name()))
+		if perr != nil {
+			fmt.Fprintf(os.Stderr, "skipping %s: %v\n", e.Name(), perr)
+			continue
+		}
+		sessionsCommandOne(p, dataRoot)
+	}
+}
+
+// sessionsCommandOne prints the session listing for one loaded persona.
+func sessionsCommandOne(p *Persona, dataRoot string) {
+	sdir := filepath.Join(dataRoot, p.Name, "sessions")
+	entries, err := os.ReadDir(sdir)
+	if err != nil {
+		fmt.Printf("%s — no sessions\n", p.Name)
+		return
+	}
+
+	// Collect then reverse: os.ReadDir returns name-ascending order,
+	// newest-first display wants descending.
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			names = append(names, e.Name())
+		}
+	}
+	if len(names) == 0 {
+		fmt.Printf("%s — no sessions\n", p.Name)
+		return
+	}
+
+	fmt.Printf("%s — %d session%s\n", p.Name, len(names), plural(len(names)))
+	for i := len(names) - 1; i >= 0; i-- {
+		path := filepath.Join(sdir, names[i])
+		s, err := LoadSession(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  %s: unreadable (%v)\n", names[i], err)
+			continue
+		}
+		fmt.Printf("  %-32s %3d turns   %s\n", names[i], len(s.Messages)/2, preview(s))
+	}
+}
+
+// preview extracts a flattened, truncated first-user-message summary.
+func preview(s *Session) string {
+	for _, m := range s.Messages {
+		if m.Role != "user" {
+			continue
+		}
+		text := strings.Join(strings.Fields(m.Content), " ") // collapse whitespace/newlines
+		const width = 50
+		if len(text) > width {
+			trunc := []rune(text[:width])
+			return string(trunc) + "…"
+		}
+		return "\"" + text + "\""
+	}
+	return "(no user message)"
+}
+
+// plural returns "" or "s" for count.
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}

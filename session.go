@@ -24,6 +24,7 @@ type Session struct {
 	Model    string    `json:"model"`             // model tag used for this session
 	System   string    `json:"system"`            // persona system prompt
 	Summary  string    `json:"summary,omitempty"` // rolling compaction of evicted turns
+	Evicted  int       `json:"evicted,omitempty"` // total messages evicted by trimming (all time)
 	Messages []Message `json:"messages"`          // live dialogue (user/assistant pairs)
 }
 
